@@ -29,6 +29,9 @@ nameOverride: ""
 ## @param fullnameOverride String to fully override aspnet-core.fullname
 ##
 fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
 ## @param commonLabels Labels to add to all deployed objects
 ##
 commonLabels: {}
@@ -50,6 +53,7 @@ extraDeploy: []
 ## @param image.registry ASP.NET Core image registry
 ## @param image.repository ASP.NET Core image repository
 ## @param image.tag ASP.NET Core image tag (immutable tags are recommended)
+## @param image.digest ASP.NET Core image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy ASP.NET Core image pull policy
 ## @param image.pullSecrets ASP.NET Core image pull secrets
 ## @param image.debug Enable image debug mode
@@ -57,7 +61,8 @@ extraDeploy: []
 image:
   registry: docker.io
   repository: bitnami/aspnet-core
-  tag: 6.0.1-debian-10-r30
+  tag: 6.0.10-debian-11-r0
+  digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -361,13 +366,15 @@ appFromExternalRepo:
     ## @param appFromExternalRepo.clone.image.registry Git image registry
     ## @param appFromExternalRepo.clone.image.repository Git image repository
     ## @param appFromExternalRepo.clone.image.tag Git image tag (immutable tags are recommended)
+    ## @param appFromExternalRepo.clone.image.digest Git image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
     ## @param appFromExternalRepo.clone.image.pullPolicy Git image pull policy
     ## @param appFromExternalRepo.clone.image.pullSecrets Git image pull secrets
     ##
     image:
       registry: docker.io
       repository: bitnami/git
-      tag: 2.34.1-debian-10-r46
+      tag: 2.38.0-debian-11-r2
+      digest: ""
       ## Specify a imagePullPolicy
       ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
       ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -401,13 +408,15 @@ appFromExternalRepo:
     ## @param appFromExternalRepo.publish.image.registry .NET SDK image registry
     ## @param appFromExternalRepo.publish.image.repository .NET SDK image repository
     ## @param appFromExternalRepo.publish.image.tag .NET SDK image tag (immutable tags are recommended)
+    ## @param appFromExternalRepo.publish.image.digest .NET SDK image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
     ## @param appFromExternalRepo.publish.image.pullPolicy .NET SDK image pull policy
     ## @param appFromExternalRepo.publish.image.pullSecrets .NET SDK image pull secrets
     ##
     image:
       registry: docker.io
       repository: bitnami/dotnet-sdk
-      tag: 6.0.101-debian-10-r29
+      tag: 6.0.401-debian-11-r9
+      digest: ""
       ## Specify a imagePullPolicy
       ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
       ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -485,6 +494,17 @@ service:
   ## @param service.annotations Additional custom annotations for ASP.NET Core service
   ##
   annotations: {}
+  ## @param service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+  ## If "ClientIP", consecutive client requests will be directed to the same Pod
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  ## sessionAffinityConfig:
+  ##   clientIP:
+  ##     timeoutSeconds: 300
+  ##
+  sessionAffinityConfig: {}
 ## Configure the ingress resource that allows you to access the ASP.NET Core app
 ## ref: https://kubernetes.io/docs/user-guide/ingress/
 ##
@@ -520,7 +540,7 @@ ingress:
   ## TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`
   ## You can:
   ##   - Use the `ingress.secrets` parameter to create this TLS secret
-  ##   - Relay on cert-manager to create it by setting the corresponding annotations
+  ##   - Rely on cert-manager to create it by setting the corresponding annotations
   ##
   tls: false
   ## @param ingress.extraPaths Any additional arbitrary paths that may need to be added to the ingress under the main host.
@@ -577,6 +597,20 @@ ingress:
   ##       -----END CERTIFICATE-----
   ##
   secrets: []
+  ## @param ingress.extraRules Additional rules to be covered with this ingress record
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
+  ## e.g:
+  ## extraRules:
+  ## - host: aspnet-core.local
+  ##     http:
+  ##       path: /
+  ##       backend:
+  ##         service:
+  ##           name: aspnet-core-svc
+  ##           port:
+  ##             name: http
+  ##
+  extraRules: []
 ## Health Ingress
 ##
 healthIngress:
@@ -608,14 +642,18 @@ healthIngress:
   ## TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`
   ## You can:
   ##   - Use the `ingress.secrets` parameter to create this TLS secret
-  ##   - Relay on cert-manager to create it by setting the corresponding annotations
-  ##   - Relay on Helm to create self-signed certificates
+  ##   - Rely on cert-manager to create it by setting the corresponding annotations
+  ##   - Rely on Helm to create self-signed certificates
   ##
   tls: false
   ## DEPRECATED: Use healthIngress.annotations instead of healthIngress.certManager
   ## certManager: false
   ##
-
+  ## @param healthIngress.ingressClassName IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)
+  ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster .
+  ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
+  ##
+  ingressClassName: ""
   ## @param healthIngress.extraHosts n array with additional hostname(s) to be covered with the ingress record
   ## Most likely the hostname above will be enough, but in the event more hosts are needed, this is an array
   ## extraHosts:
@@ -651,6 +689,20 @@ healthIngress:
   ##       -----END CERTIFICATE-----
   ##
   secrets: []
+  ## @param healthIngress.extraRules Additional rules to be covered with this ingress record
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
+  ## e.g:
+  ## extraRules:
+  ## - host: aspnet-core.local
+  ##     http:
+  ##       path: /
+  ##       backend:
+  ##         service:
+  ##           name: aspnet-core-svc
+  ##           port:
+  ##             name: http
+  ##
+  extraRules: []
 
 ## @section RBAC parameters
 ##

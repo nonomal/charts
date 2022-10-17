@@ -1,14 +1,18 @@
 <!--- app-name: Contour Operator -->
 
-# Contour Operator
+# Contour Operator packaged by Bitnami
 
-[The Contour Operator](https://github.com/projectcontour/contour-operator/) extends the Kubernetes API to create, configure and manage instances of Contour on behalf of users.
+The Contour Operator extends the Kubernetes API to create, configure and manage instances of Contour on behalf of users.
 
+[Overview of Contour Operator](https://github.com/projectcontour/contour-operator)
+
+Trademarks: This software listing is packaged by Bitnami. The respective trademarks mentioned in the offering are owned by the respective companies, and use of them does not imply any affiliation or endorsement.
+                           
 ## TL;DR
 
 ```console
-$ helm repo add bitnami https://charts.bitnami.com/bitnami
-$ helm install my-release bitnami/contour-operator
+$ helm repo add my-repo https://charts.bitnami.com/bitnami
+$ helm install my-release my-repo/contour-operator
 ```
 
 ## Introduction
@@ -17,11 +21,11 @@ Bitnami charts for Helm are carefully engineered, actively maintained and are th
 
 This chart bootstraps a [Contour Operator](https://github.com/projectcontour/contour-operator/) Deployment in a [Kubernetes](https://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
 
-Bitnami charts can be used with [Kubeapps](https://kubeapps.com/) for deployment and management of Helm Charts in clusters. This Helm chart has been tested on top of [Bitnami Kubernetes Production Runtime](https://kubeprod.io/) (BKPR). Deploy BKPR to get automated TLS certificates, logging and monitoring for your applications.
+Bitnami charts can be used with [Kubeapps](https://kubeapps.dev/) for deployment and management of Helm Charts in clusters.
 
 ## Prerequisites
 
-- Kubernetes 1.19+
+- Kubernetes 1.21+
 - Helm 3.2.0+
 
 ## Installing the Chart
@@ -29,7 +33,7 @@ Bitnami charts can be used with [Kubeapps](https://kubeapps.com/) for deployment
 To install the chart with the release name `my-release`:
 
 ```console
-helm install my-release bitnami/contour-operator
+helm install my-release my-repo/contour-operator
 ```
 
 The command deploys the Contour Operator on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
@@ -95,18 +99,17 @@ The operator will extend the Kubernetes API with the *Contour* object, among oth
   |                    |      |     RBAC      |
   |     Deployment     |      | Privileges    |
   +-------+------------+      +-------+-------+
-    │     ^                           |
-    │     |   +-----------------+     |
-    │     +---+ Service Account +<----+
-    │         +-----------------+
-    │
-    │
-    │
-    │
-    │    ┌───────────────────────────────────────────────────────────────────────┐
-    │    │                                                                       │
+    |     ^                           |
+    |     |   +-----------------+     |
+    |     +---+ Service Account +<----+
+    |         +-----------------+
+    |
+    |
+    |
+    |
+    |    +-----------------------------------------------------------------------+
     |    |                       +--------------+                +-------------+ |
-    |────►                       |              |                |             | |
+    |->  |                       |              |                |             | |
          |    Service            |   Contour    |                |    Envoy    | |
          |   <-------------------+              +<---------------+             | |
          |                       |  Deployment  |                |  DaemonSet  | |
@@ -114,12 +117,10 @@ The operator will extend the Kubernetes API with the *Contour* object, among oth
          |                       +-----------+--+                +-------------+ |
          |                                   ^                                   |
          |                                   |                +------------+     |
-         │                                   +----------------+ Configmaps |     |
-         │                                                    |  Secrets   |     |
-         │                                                    +------------+     |
-         │                                                                       │
-         │                                                                       │
-         └───────────────────────────────────────────────────────────────────────┘
+         |                                   +----------------+ Configmaps |     |
+         |                                                    |  Secrets   |     |
+         |                                                    +------------+     |
+         +-----------------------------------------------------------------------+
 
 ```
 
@@ -150,87 +151,93 @@ This solution allows to easily deploy multiple Contour instances compared to the
 
 ### Contour Operator Parameters
 
-| Name                                    | Description                                                                                                              | Value                      |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| `image.registry`                        | Contour Operator image registry                                                                                          | `docker.io`                |
-| `image.repository`                      | Contour Operator image repository                                                                                        | `bitnami/contour-operator` |
-| `image.tag`                             | Contour Operator image tag (immutable tags are recommended)                                                              | `1.19.1-scratch-r3`        |
-| `image.pullPolicy`                      | Contour Operator image pull policy                                                                                       | `IfNotPresent`             |
-| `image.pullSecrets`                     | Contour Operator image pull secrets                                                                                      | `[]`                       |
-| `contourImage.registry`                 | Contour Image registry                                                                                                   | `docker.io`                |
-| `contourImage.repository`               | Contour Image repository                                                                                                 | `bitnami/contour`          |
-| `contourImage.tag`                      | Contour Image tag (immutable tags are recommended)                                                                       | `1.19.1-debian-10-r63`     |
-| `contourImage.pullSecrets`              | Contour Image pull secrets                                                                                               | `[]`                       |
-| `envoyImage.registry`                   | Envoy Image registry                                                                                                     | `docker.io`                |
-| `envoyImage.repository`                 | Envoy Image repository                                                                                                   | `bitnami/envoy`            |
-| `envoyImage.tag`                        | Envoy Image tag (immutable tags are recommended)                                                                         | `1.19.1-debian-10-r136`    |
-| `envoyImage.pullSecrets`                | Envoy Image pull secrets                                                                                                 | `[]`                       |
-| `replicaCount`                          | Number of Contour Operator replicas to deploy                                                                            | `1`                        |
-| `livenessProbe.enabled`                 | Enable livenessProbe on Contour Operator nodes                                                                           | `true`                     |
-| `livenessProbe.initialDelaySeconds`     | Initial delay seconds for livenessProbe                                                                                  | `5`                        |
-| `livenessProbe.periodSeconds`           | Period seconds for livenessProbe                                                                                         | `30`                       |
-| `livenessProbe.timeoutSeconds`          | Timeout seconds for livenessProbe                                                                                        | `5`                        |
-| `livenessProbe.failureThreshold`        | Failure threshold for livenessProbe                                                                                      | `5`                        |
-| `livenessProbe.successThreshold`        | Success threshold for livenessProbe                                                                                      | `1`                        |
-| `readinessProbe.enabled`                | Enable readinessProbe on Contour Operator nodes                                                                          | `true`                     |
-| `readinessProbe.initialDelaySeconds`    | Initial delay seconds for readinessProbe                                                                                 | `5`                        |
-| `readinessProbe.periodSeconds`          | Period seconds for readinessProbe                                                                                        | `30`                       |
-| `readinessProbe.timeoutSeconds`         | Timeout seconds for readinessProbe                                                                                       | `5`                        |
-| `readinessProbe.failureThreshold`       | Failure threshold for readinessProbe                                                                                     | `5`                        |
-| `readinessProbe.successThreshold`       | Success threshold for readinessProbe                                                                                     | `1`                        |
-| `startupProbe.enabled`                  | Enable startupProbe on Contour Operator nodes                                                                            | `false`                    |
-| `startupProbe.initialDelaySeconds`      | Initial delay seconds for startupProbe                                                                                   | `5`                        |
-| `startupProbe.periodSeconds`            | Period seconds for startupProbe                                                                                          | `30`                       |
-| `startupProbe.timeoutSeconds`           | Timeout seconds for startupProbe                                                                                         | `5`                        |
-| `startupProbe.failureThreshold`         | Failure threshold for startupProbe                                                                                       | `5`                        |
-| `startupProbe.successThreshold`         | Success threshold for startupProbe                                                                                       | `1`                        |
-| `customLivenessProbe`                   | Custom livenessProbe that overrides the default one                                                                      | `{}`                       |
-| `customReadinessProbe`                  | Custom readinessProbe that overrides the default one                                                                     | `{}`                       |
-| `customStartupProbe`                    | Custom startupProbe that overrides the default one                                                                       | `{}`                       |
-| `resources.limits`                      | The resources limits for the Contour Operator containers                                                                 | `{}`                       |
-| `resources.requests`                    | The requested resources for the Contour Operator containers                                                              | `{}`                       |
-| `podSecurityContext.enabled`            | Enabled Contour Operator pods' Security Context                                                                          | `true`                     |
-| `podSecurityContext.fsGroup`            | Set Contour Operator pod's Security Context fsGroup                                                                      | `1001`                     |
-| `containerSecurityContext.enabled`      | Enabled Contour Operator containers' Security Context                                                                    | `true`                     |
-| `containerSecurityContext.runAsUser`    | Set Contour Operator containers' Security Context runAsUser                                                              | `1001`                     |
-| `containerSecurityContext.runAsNonRoot` | Set Contour Operator containers' Security Context runAsNonRoot                                                           | `true`                     |
-| `command`                               | Override default container command (useful when using custom images)                                                     | `[]`                       |
-| `args`                                  | Override default container args (useful when using custom images)                                                        | `[]`                       |
-| `hostAliases`                           | Contour Operator pods host aliases                                                                                       | `[]`                       |
-| `schedulerName`                         | Name of the Kubernetes scheduler (other than default)                                                                    | `""`                       |
-| `podLabels`                             | Extra labels for Contour Operator pods                                                                                   | `{}`                       |
-| `podAnnotations`                        | Annotations for Contour Operator pods                                                                                    | `{}`                       |
-| `podAffinityPreset`                     | Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                      | `""`                       |
-| `podAntiAffinityPreset`                 | Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                 | `soft`                     |
-| `nodeAffinityPreset.type`               | Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                | `""`                       |
-| `nodeAffinityPreset.key`                | Node label key to match. Ignored if `affinity` is set                                                                    | `""`                       |
-| `nodeAffinityPreset.values`             | Node label values to match. Ignored if `affinity` is set                                                                 | `[]`                       |
-| `affinity`                              | Affinity for Contour Operator pods assignment                                                                            | `{}`                       |
-| `nodeSelector`                          | Node labels for Contour Operator pods assignment                                                                         | `{}`                       |
-| `tolerations`                           | Tolerations for Contour Operator pods assignment                                                                         | `[]`                       |
-| `updateStrategy.type`                   | Contour Operator deployment strategy type                                                                                | `RollingUpdate`            |
-| `priorityClassName`                     | Contour Operator pods' priorityClassName                                                                                 | `""`                       |
-| `lifecycleHooks`                        | for the Contour Operator container(s) to automate configuration before or after startup                                  | `{}`                       |
-| `terminationGracePeriodSeconds`         | Termination grace period in seconds                                                                                      | `""`                       |
-| `topologySpreadConstraints`             | Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template | `[]`                       |
-| `containerPorts.metrics`                | Metrics port for the Contour Operator container                                                                          | `8080`                     |
-| `extraEnvVars`                          | Array with extra environment variables to add to Contour Operator nodes                                                  | `[]`                       |
-| `extraEnvVarsCM`                        | Name of existing ConfigMap containing extra env vars for Contour Operator nodes                                          | `""`                       |
-| `extraEnvVarsSecret`                    | Name of existing Secret containing extra env vars for Contour Operator nodes                                             | `""`                       |
-| `extraVolumes`                          | Optionally specify extra list of additional volumes for the Contour Operator pod(s)                                      | `[]`                       |
-| `extraVolumeMounts`                     | Optionally specify extra list of additional volumeMounts for the Contour Operator container(s)                           | `[]`                       |
-| `sidecars`                              | Add additional sidecar containers to the Contour Operator pod(s)                                                         | `[]`                       |
-| `initContainers`                        | Add additional init containers to the Contour Operator pod(s)                                                            | `[]`                       |
+| Name                                              | Description                                                                                                              | Value                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| `image.registry`                                  | Contour Operator image registry                                                                                          | `docker.io`                |
+| `image.repository`                                | Contour Operator image repository                                                                                        | `bitnami/contour-operator` |
+| `image.tag`                                       | Contour Operator image tag (immutable tags are recommended)                                                              | `1.22.0-scratch-r2`        |
+| `image.digest`                                    | Contour Operator image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag         | `""`                       |
+| `image.pullPolicy`                                | Contour Operator image pull policy                                                                                       | `IfNotPresent`             |
+| `image.pullSecrets`                               | Contour Operator image pull secrets                                                                                      | `[]`                       |
+| `contourImage.registry`                           | Contour Image registry                                                                                                   | `docker.io`                |
+| `contourImage.repository`                         | Contour Image repository                                                                                                 | `bitnami/contour`          |
+| `contourImage.tag`                                | Contour Image tag (immutable tags are recommended)                                                                       | `1.22.0-debian-11-r3`      |
+| `contourImage.digest`                             | Contour image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag                  | `""`                       |
+| `contourImage.pullSecrets`                        | Contour Image pull secrets                                                                                               | `[]`                       |
+| `envoyImage.registry`                             | Envoy Image registry                                                                                                     | `docker.io`                |
+| `envoyImage.repository`                           | Envoy Image repository                                                                                                   | `bitnami/envoy`            |
+| `envoyImage.tag`                                  | Envoy Image tag (immutable tags are recommended)                                                                         | `1.23.0-debian-11-r7`      |
+| `envoyImage.digest`                               | Envoy image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag                    | `""`                       |
+| `envoyImage.pullSecrets`                          | Envoy Image pull secrets                                                                                                 | `[]`                       |
+| `replicaCount`                                    | Number of Contour Operator replicas to deploy                                                                            | `1`                        |
+| `livenessProbe.enabled`                           | Enable livenessProbe on Contour Operator nodes                                                                           | `true`                     |
+| `livenessProbe.initialDelaySeconds`               | Initial delay seconds for livenessProbe                                                                                  | `5`                        |
+| `livenessProbe.periodSeconds`                     | Period seconds for livenessProbe                                                                                         | `30`                       |
+| `livenessProbe.timeoutSeconds`                    | Timeout seconds for livenessProbe                                                                                        | `5`                        |
+| `livenessProbe.failureThreshold`                  | Failure threshold for livenessProbe                                                                                      | `5`                        |
+| `livenessProbe.successThreshold`                  | Success threshold for livenessProbe                                                                                      | `1`                        |
+| `readinessProbe.enabled`                          | Enable readinessProbe on Contour Operator nodes                                                                          | `true`                     |
+| `readinessProbe.initialDelaySeconds`              | Initial delay seconds for readinessProbe                                                                                 | `5`                        |
+| `readinessProbe.periodSeconds`                    | Period seconds for readinessProbe                                                                                        | `30`                       |
+| `readinessProbe.timeoutSeconds`                   | Timeout seconds for readinessProbe                                                                                       | `5`                        |
+| `readinessProbe.failureThreshold`                 | Failure threshold for readinessProbe                                                                                     | `5`                        |
+| `readinessProbe.successThreshold`                 | Success threshold for readinessProbe                                                                                     | `1`                        |
+| `startupProbe.enabled`                            | Enable startupProbe on Contour Operator nodes                                                                            | `false`                    |
+| `startupProbe.initialDelaySeconds`                | Initial delay seconds for startupProbe                                                                                   | `5`                        |
+| `startupProbe.periodSeconds`                      | Period seconds for startupProbe                                                                                          | `30`                       |
+| `startupProbe.timeoutSeconds`                     | Timeout seconds for startupProbe                                                                                         | `5`                        |
+| `startupProbe.failureThreshold`                   | Failure threshold for startupProbe                                                                                       | `5`                        |
+| `startupProbe.successThreshold`                   | Success threshold for startupProbe                                                                                       | `1`                        |
+| `customLivenessProbe`                             | Custom livenessProbe that overrides the default one                                                                      | `{}`                       |
+| `customReadinessProbe`                            | Custom readinessProbe that overrides the default one                                                                     | `{}`                       |
+| `customStartupProbe`                              | Custom startupProbe that overrides the default one                                                                       | `{}`                       |
+| `resources.limits`                                | The resources limits for the Contour Operator containers                                                                 | `{}`                       |
+| `resources.requests`                              | The requested resources for the Contour Operator containers                                                              | `{}`                       |
+| `podSecurityContext.enabled`                      | Enabled Contour Operator pods' Security Context                                                                          | `true`                     |
+| `podSecurityContext.fsGroup`                      | Set Contour Operator pod's Security Context fsGroup                                                                      | `1001`                     |
+| `containerSecurityContext.enabled`                | Enabled Contour Operator containers' Security Context                                                                    | `true`                     |
+| `containerSecurityContext.runAsUser`              | Set Contour Operator containers' Security Context runAsUser                                                              | `1001`                     |
+| `containerSecurityContext.runAsNonRoot`           | Set Contour Operator containers' Security Context runAsNonRoot                                                           | `true`                     |
+| `containerSecurityContext.readOnlyRootFilesystem` | Mount / (root) as a readonly filesystem on Contour Operator containers                                                   | `true`                     |
+| `command`                                         | Override default container command (useful when using custom images)                                                     | `[]`                       |
+| `args`                                            | Override default container args (useful when using custom images)                                                        | `[]`                       |
+| `hostAliases`                                     | Contour Operator pods host aliases                                                                                       | `[]`                       |
+| `schedulerName`                                   | Name of the Kubernetes scheduler (other than default)                                                                    | `""`                       |
+| `podLabels`                                       | Extra labels for Contour Operator pods                                                                                   | `{}`                       |
+| `podAnnotations`                                  | Annotations for Contour Operator pods                                                                                    | `{}`                       |
+| `podAffinityPreset`                               | Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                      | `""`                       |
+| `podAntiAffinityPreset`                           | Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                 | `soft`                     |
+| `nodeAffinityPreset.type`                         | Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                | `""`                       |
+| `nodeAffinityPreset.key`                          | Node label key to match. Ignored if `affinity` is set                                                                    | `""`                       |
+| `nodeAffinityPreset.values`                       | Node label values to match. Ignored if `affinity` is set                                                                 | `[]`                       |
+| `affinity`                                        | Affinity for Contour Operator pods assignment                                                                            | `{}`                       |
+| `nodeSelector`                                    | Node labels for Contour Operator pods assignment                                                                         | `{}`                       |
+| `tolerations`                                     | Tolerations for Contour Operator pods assignment                                                                         | `[]`                       |
+| `updateStrategy.type`                             | Contour Operator deployment strategy type                                                                                | `RollingUpdate`            |
+| `priorityClassName`                               | Contour Operator pods' priorityClassName                                                                                 | `""`                       |
+| `runtimeClassName`                                | Name of the runtime class to be used by pod(s)                                                                           | `""`                       |
+| `lifecycleHooks`                                  | for the Contour Operator container(s) to automate configuration before or after startup                                  | `{}`                       |
+| `terminationGracePeriodSeconds`                   | Termination grace period in seconds                                                                                      | `""`                       |
+| `topologySpreadConstraints`                       | Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template | `[]`                       |
+| `containerPorts.metrics`                          | Metrics port for the Contour Operator container                                                                          | `8080`                     |
+| `extraEnvVars`                                    | Array with extra environment variables to add to Contour Operator nodes                                                  | `[]`                       |
+| `extraEnvVarsCM`                                  | Name of existing ConfigMap containing extra env vars for Contour Operator nodes                                          | `""`                       |
+| `extraEnvVarsSecret`                              | Name of existing Secret containing extra env vars for Contour Operator nodes                                             | `""`                       |
+| `extraVolumes`                                    | Optionally specify extra list of additional volumes for the Contour Operator pod(s)                                      | `[]`                       |
+| `extraVolumeMounts`                               | Optionally specify extra list of additional volumeMounts for the Contour Operator container(s)                           | `[]`                       |
+| `sidecars`                                        | Add additional sidecar containers to the Contour Operator pod(s)                                                         | `[]`                       |
+| `initContainers`                                  | Add additional init containers to the Contour Operator pod(s)                                                            | `[]`                       |
 
 
 ### Other Parameters
 
-| Name                                          | Description                                          | Value  |
-| --------------------------------------------- | ---------------------------------------------------- | ------ |
-| `rbac.create`                                 | Specifies whether RBAC resources should be created   | `true` |
-| `serviceAccount.create`                       | Specifies whether a ServiceAccount should be created | `true` |
-| `serviceAccount.name`                         | The name of the ServiceAccount to use.               | `""`   |
-| `serviceAccount.automountServiceAccountToken` | Automount service account token                      | `true` |
+| Name                                          | Description                                                                                                         | Value  |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------ |
+| `rbac.create`                                 | Specifies whether RBAC resources should be created                                                                  | `true` |
+| `serviceAccount.create`                       | Specifies whether a ServiceAccount should be created                                                                | `true` |
+| `serviceAccount.name`                         | Name of the service account to use. If not set and create is true, a name is generated using the fullname template. | `""`   |
+| `serviceAccount.automountServiceAccountToken` | Automount service account token for the server service account                                                      | `true` |
+| `serviceAccount.annotations`                  | Annotations for service account. Evaluated as a template. Only used if `create` is `true`.                          | `{}`   |
 
 
 ### Metrics parameters
@@ -265,7 +272,7 @@ Specify each parameter using the `--set key=value[,key=value]` argument to `helm
 ```console
 helm install my-release \
   --set livenessProbe.enabled=false \
-    bitnami/contour-operator
+    my-repo/contour-operator
 ```
 
 The above command disables the Operator liveness probes.
@@ -273,7 +280,7 @@ The above command disables the Operator liveness probes.
 Alternatively, a YAML file that specifies the values for the above parameters can be provided while installing the chart. For example,
 
 ```console
-helm install my-release -f values.yaml bitnami/contour-operator
+helm install my-release -f values.yaml my-repo/contour-operator
 ```
 
 > **Tip**: You can use the default [values.yaml](values.yaml)
@@ -355,6 +362,14 @@ extraDeploy:
       namespace:
         name: {{ .Release.Namespace | quote }}
 ```
+
+## Upgrading
+
+### To 1.0.0
+
+This version updates the chart to use Contour's latest release, `1.20.1`. Among other features, exisiting CRDs have been syncronised with the official [Contour repository](https://github.com/projectcontour/contour/blob/main/examples/render/contour.yaml)
+
+This version bumps the Envoy and Contour container to the ones matching the Contour Operator requirements.
 
 ## Troubleshooting
 

@@ -3,7 +3,8 @@
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: {{ include "common.names.fullname" . }}-forwarder
+  name: {{ printf "%s-%s" (include "common.names.fullname.namespace" .) "forwarder" }}
+  namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: forwarder
     {{- if .Values.commonLabels }}
@@ -29,26 +30,26 @@ spec:
     - 'downwardAPI'
     - 'hostPath'
     - 'persistentVolumeClaim'
-  hostNetwork: false
+  hostNetwork: {{ .Values.forwarder.hostNetwork }}
   hostIPC: false
   hostPID: false
   runAsUser:
-    {{- if eq (int .Values.forwarder.securityContext.runAsUser) 0 }}
+    {{- if eq (int .Values.forwarder.podSecurityContext.runAsUser) 0 }}
     rule: 'RunAsAny'
     {{- else }}
     rule: 'MustRunAs'
     ranges:
-      - min: {{ .Values.forwarder.securityContext.runAsUser }}
-        max: {{ .Values.forwarder.securityContext.runAsUser }}
+      - min: {{ .Values.forwarder.podSecurityContext.runAsUser }}
+        max: {{ .Values.forwarder.podSecurityContext.runAsUser }}
     {{- end }}
   runAsGroup:
-    {{- if eq (int .Values.forwarder.securityContext.runAsGroup) 0 }}
+    {{- if eq (int .Values.forwarder.podSecurityContext.runAsGroup) 0 }}
     rule: 'RunAsAny'
     {{- else }}
     rule: 'MustRunAs'
     ranges:
-      - min: {{ .Values.forwarder.securityContext.runAsGroup }}
-        max: {{ .Values.forwarder.securityContext.runAsGroup }}
+      - min: {{ .Values.forwarder.podSecurityContext.runAsGroup }}
+        max: {{ .Values.forwarder.podSecurityContext.runAsGroup }}
     {{- end }}
   seLinux:
     rule: 'RunAsAny'
@@ -58,13 +59,13 @@ spec:
       - min: 1
         max: 65535
   fsGroup:
-    {{- if eq (int .Values.forwarder.securityContext.fsGroup) 0 }}
+    {{- if eq (int .Values.forwarder.podSecurityContext.fsGroup) 0 }}
     rule: 'RunAsAny'
     {{- else }}
     rule: 'MustRunAs'
     ranges:
-      - min: {{ .Values.forwarder.securityContext.fsGroup }}
-        max: {{ .Values.forwarder.securityContext.fsGroup }}
+      - min: {{ .Values.forwarder.podSecurityContext.fsGroup }}
+        max: {{ .Values.forwarder.podSecurityContext.fsGroup }}
     {{- end }}
   readOnlyRootFilesystem: {{ .Values.forwarder.containerSecurityContext.readOnlyRootFilesystem }}
   {{- end }}

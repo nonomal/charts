@@ -3,7 +3,7 @@ kind: NetworkPolicy
 apiVersion: {{ include "common.capabilities.networkPolicy.apiVersion" . }}
 metadata:
   name: {{ template "common.names.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     {{- if .Values.commonLabels }}
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
@@ -24,7 +24,7 @@ spec:
               {{ template "common.names.fullname" . }}-client: "true"
       {{- end }}
     - ports:
-        - port: {{ .Values.service.ports.client }}
+        - port: {{ .Values.service.ports.cluster }}
     - ports:
         - port: {{ .Values.service.ports.monitoring }}
 {{- end }}

@@ -1,14 +1,14 @@
 annotations:
   category: MachineLearning
 apiVersion: v2
-appVersion: 1.10.1
+appVersion: 1.12.1
 dependencies:
   - name: common
     repository: https://charts.bitnami.com/bitnami
     tags:
       - bitnami-common
-    version: 1.x.x
-description: Deep learning platform that accelerates the transition from research prototyping to production deployment
+    version: 2.x.x
+description: PyTorch is a deep learning platform that accelerates the transition from research prototyping to production deployment. Bitnami image includes Torchvision for specific computer vision support.
 engine: gotpl
 home: https://github.com/bitnami/charts/tree/master/bitnami/pytorch
 icon: https://bitnami.com/assets/stacks/pytorch/img/pytorch-stack-220x234.png
@@ -18,10 +18,10 @@ keywords:
   - machine
   - learning
 maintainers:
-  - email: containers@bitnami.com
-    name: Bitnami
+  - name: Bitnami
+    url: https://github.com/bitnami/charts
 name: pytorch
 sources:
-  - https://github.com/bitnami/bitnami-docker-pytorch
+  - https://github.com/bitnami/containers/tree/main/bitnami/pytorch
   - https://pytorch.org/
-version: 2.3.24
+version: 2.5.6

@@ -2,6 +2,7 @@
 ## Global Docker image parameters
 ## Please, note that this will override the image parameters, including dependencies, configured to use the global value
 ## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+##
 
 ## @param global.imageRegistry Global Docker Image registry
 ## @param global.imagePullSecrets Global Docker registry secret names as an array
@@ -17,6 +18,7 @@ global:
   storageClass: ""
 
 ## @section Common parameters
+##
 
 ## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
 ##
@@ -60,12 +62,14 @@ diagnosticMode:
     - infinity
 
 ## @section MariaDB common parameters
+##
 
 ## Bitnami MariaDB image
 ## ref: https://hub.docker.com/r/bitnami/mariadb/tags/
 ## @param image.registry MariaDB image registry
 ## @param image.repository MariaDB image repository
 ## @param image.tag MariaDB image tag (immutable tags are recommended)
+## @param image.digest MariaDB image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy MariaDB image pull policy
 ## @param image.pullSecrets Specify docker-registry secret names as an array
 ## @param image.debug Specify if debug logs should be enabled
@@ -73,7 +77,8 @@ diagnosticMode:
 image:
   registry: docker.io
   repository: bitnami/mariadb
-  tag: 10.5.13-debian-10-r58
+  tag: 10.6.10-debian-11-r6
+  digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -97,26 +102,26 @@ architecture: standalone
 ##
 auth:
   ## @param auth.rootPassword Password for the `root` user. Ignored if existing secret is provided.
-  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-the-root-password-on-first-run
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/mariadb#setting-the-root-password-on-first-run
   ##
   rootPassword: ""
   ## @param auth.database Name for a custom database to create
-  ## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-on-first-run
+  ## ref: https://github.com/bitnami/containers/blob/main/bitnami/mariadb/README.md#creating-a-database-on-first-run
   ##
   database: my_database
   ## @param auth.username Name for a custom user to create
-  ## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-user-on-first-run
+  ## ref: https://github.com/bitnami/containers/blob/main/bitnami/mariadb/README.md#creating-a-database-user-on-first-run
   ##
   username: ""
   ## @param auth.password Password for the new user. Ignored if existing secret is provided
   ##
   password: ""
   ## @param auth.replicationUser MariaDB replication user
-  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-up-a-replication-cluster
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/mariadb#setting-up-a-replication-cluster
   ##
   replicationUser: replicator
   ## @param auth.replicationPassword MariaDB replication user password. Ignored if existing secret is provided
-  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-up-a-replication-cluster
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/mariadb#setting-up-a-replication-cluster
   ##
   replicationPassword: ""
   ## @param auth.existingSecret Use existing secret for password details (`auth.rootPassword`, `auth.password`, `auth.replicationPassword` will be ignored and picked up from this secret). The secret has to contain the keys `mariadb-root-password`, `mariadb-replication-password` and `mariadb-password`
@@ -125,7 +130,7 @@ auth:
   ## @param auth.forcePassword Force users to specify required passwords
   ##
   forcePassword: false
-  ## @param auth.usePasswordFiles Mount credentials as a files instead of using an environment variable
+  ## @param auth.usePasswordFiles Mount credentials as files instead of using environment variables
   ##
   usePasswordFiles: false
   ## @param auth.customPasswordFiles Use custom password files when `auth.usePasswordFiles` is set to `true`. Define path for keys `root` and `user`, also define `replicator` if `architecture` is set to `replication`
@@ -150,10 +155,14 @@ initdbScripts: {}
 initdbScriptsConfigMap: ""
 
 ## @section MariaDB Primary parameters
+##
 
 ## Mariadb Primary parameters
 ##
 primary:
+  ## @param primary.name Name of the primary database (eg primary, master, leader, ...)
+  ##
+  name: primary
   ## @param primary.command Override default container command on MariaDB Primary container(s) (useful when using custom images)
   ##
   command: []
@@ -180,11 +189,14 @@ primary:
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
     tmpdir=/opt/bitnami/mariadb/tmp
     max_allowed_packet=16M
-    bind-address=::
+    bind-address=*
     pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
     log-error=/opt/bitnami/mariadb/logs/mysqld.log
     character-set-server=UTF8
     collation-server=utf8_general_ci
+    slow_query_log=0
+    slow_query_log_file=/opt/bitnami/mariadb/logs/mysqld.log
+    long_query_time=10.0
 
     [client]
     port=3306
@@ -276,7 +288,7 @@ primary:
   ##     topologyKey: topology.kubernetes.io/zone
   ##     whenUnsatisfiable: DoNotSchedule
   ##
-  topologySpreadConstraints: {}
+  topologySpreadConstraints: []
   ## @param primary.priorityClassName Priority class for MariaDB primary pods assignment
   ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
   ##
@@ -313,11 +325,13 @@ primary:
     ## limits:
     ##    cpu: 100m
     ##    memory: 256Mi
+    ##
     limits: {}
     ## Examples:
     ## requests:
     ##    cpu: 100m
     ##    memory: 256Mi
+    ##
     requests: {}
   ## Configure extra options for MariaDB primary containers' liveness, readiness and startup probes
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes)
@@ -378,7 +392,7 @@ primary:
   ## `bitnami/mariadb` Docker image has built-in startup check mechanism,
   ## which periodically checks if MariaDB service has started up and stops it
   ## if all checks have failed after X tries. Use these to control these checks.
-  ## ref: https://github.com/bitnami/bitnami-docker-mariadb/pull/240
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/mariadb/pull/240
   ## Example (with default options):
   ## startupWaitOptions:
   ##   retries: 300
@@ -460,10 +474,13 @@ primary:
     ## @param primary.service.type MariaDB Primary Kubernetes service type
     ##
     type: ClusterIP
-    ## @param primary.service.ports.mysql MariaDB Primary Kubernetes service port
-    ##
     ports:
+      ## @param primary.service.ports.mysql MariaDB Primary Kubernetes service port for MariaDB
+      ##
       mysql: 3306
+      ## @param primary.service.ports.metrics MariaDB Primary Kubernetes service port for metrics
+      ##
+      metrics: 9104
     ## @param primary.service.nodePorts.mysql MariaDB Primary Kubernetes service node port
     ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
     ##
@@ -502,6 +519,7 @@ primary:
     ## sessionAffinityConfig:
     ##   clientIP:
     ##     timeoutSeconds: 300
+    ##
     sessionAffinityConfig: {}
   ## MariaDB primary Pod Disruption Budget configuration
   ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
@@ -521,10 +539,14 @@ primary:
   revisionHistoryLimit: 10
 
 ## @section MariaDB Secondary parameters
+##
 
 ## Mariadb Secondary parameters
 ##
 secondary:
+  ## @param secondary.name Name of the secondary database (eg secondary, slave, ...)
+  ##
+  name: secondary
   ## @param secondary.replicaCount Number of MariaDB secondary replicas
   ##
   replicaCount: 1
@@ -558,6 +580,9 @@ secondary:
     log-error=/opt/bitnami/mariadb/logs/mysqld.log
     character-set-server=UTF8
     collation-server=utf8_general_ci
+    slow_query_log=0
+    slow_query_log_file=/opt/bitnami/mariadb/logs/mysqld.log
+    long_query_time=10.0
 
     [client]
     port=3306
@@ -640,7 +665,7 @@ secondary:
   ##     topologyKey: topology.kubernetes.io/zone
   ##     whenUnsatisfiable: DoNotSchedule
   ##
-  topologySpreadConstraints: {}
+  topologySpreadConstraints: []
   ## @param secondary.priorityClassName Priority class for MariaDB secondary pods assignment
   ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
   ##
@@ -685,11 +710,13 @@ secondary:
     ## limits:
     ##    cpu: 100m
     ##    memory: 256Mi
+    ##
     limits: {}
     ## Examples:
     ## requests:
     ##    cpu: 100m
     ##    memory: 256Mi
+    ##
     requests: {}
   ## Configure extra options for MariaDB Secondary containers' liveness, readiness and startup probes
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes)
@@ -750,7 +777,7 @@ secondary:
   ## `bitnami/mariadb` Docker image has built-in startup check mechanism,
   ## which periodically checks if MariaDB service has started up and stops it
   ## if all checks have failed after X tries. Use these to control these checks.
-  ## ref: https://github.com/bitnami/bitnami-docker-mariadb/pull/240
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/mariadb/pull/240
   ## Example (with default options):
   ## startupWaitOptions:
   ##   retries: 300
@@ -828,10 +855,13 @@ secondary:
     ## @param secondary.service.type MariaDB secondary Kubernetes service type
     ##
     type: ClusterIP
-    ## @param secondary.service.ports.mysql MariaDB secondary Kubernetes service port
-    ##
     ports:
+      ## @param secondary.service.ports.mysql MariaDB secondary Kubernetes service port for MariaDB
+      ##
       mysql: 3306
+      ## @param secondary.service.ports.metrics MariaDB secondary Kubernetes service port for metrics
+      ##
+      metrics: 9104
     ## @param secondary.service.nodePorts.mysql MariaDB secondary Kubernetes service node port
     ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
     ##
@@ -872,6 +902,7 @@ secondary:
     ## sessionAffinityConfig:
     ##   clientIP:
     ##     timeoutSeconds: 300
+    ##
     sessionAffinityConfig: {}
   ## MariaDB secondary Pod Disruption Budget configuration
   ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
@@ -891,6 +922,7 @@ secondary:
   revisionHistoryLimit: 10
 
 ## @section RBAC parameters
+##
 
 ## MariaDB pods ServiceAccount
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
@@ -918,6 +950,7 @@ rbac:
   create: false
 
 ## @section Volume Permissions parameters
+##
 
 ## Init containers parameters:
 ## volumePermissions: Change the owner and group of the persistent volume mountpoint to runAsUser:fsGroup values from the securityContext section.
@@ -929,13 +962,15 @@ volumePermissions:
   ## @param volumePermissions.image.registry Init container volume-permissions image registry
   ## @param volumePermissions.image.repository Init container volume-permissions image repository
   ## @param volumePermissions.image.tag Init container volume-permissions image tag (immutable tags are recommended)
+  ## @param volumePermissions.image.digest Init container volume-permissions image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
   ## @param volumePermissions.image.pullPolicy Init container volume-permissions image pull policy
   ## @param volumePermissions.image.pullSecrets Specify docker-registry secret names as an array
   ##
   image:
     registry: docker.io
     repository: bitnami/bitnami-shell
-    tag: 10-debian-10-r305
+    tag: 11-debian-11-r38
+    digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets (secrets must be manually created in the namespace)
     ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -952,6 +987,7 @@ volumePermissions:
     requests: {}
 
 ## @section Metrics parameters
+##
 
 ## Mysqld Prometheus exporter parameters
 ##
@@ -962,13 +998,15 @@ metrics:
   ## @param metrics.image.registry Exporter image registry
   ## @param metrics.image.repository Exporter image repository
   ## @param metrics.image.tag Exporter image tag (immutable tags are recommended)
+  ## @param metrics.image.digest Exporter image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
   ## @param metrics.image.pullPolicy Exporter image pull policy
   ## @param metrics.image.pullSecrets Specify docker-registry secret names as an array
   ##
   image:
     registry: docker.io
     repository: bitnami/mysqld-exporter
-    tag: 0.13.0-debian-10-r209
+    tag: 0.14.0-debian-11-r43
+    digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets (secrets must be manually created in the namespace)
     ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -1023,6 +1061,11 @@ metrics:
   extraArgs:
     primary: []
     secondary: []
+  ## @param metrics.extraVolumeMounts [object] Optionally specify extra list of additional volumeMounts for the MariaDB metrics container(s)
+  ##
+  extraVolumeMounts:
+    primary: []
+    secondary: []
   ## MariaDB metrics container Security Context
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
   ## @param metrics.containerSecurityContext.enabled Enable security context for MariaDB metrics container
@@ -1049,11 +1092,13 @@ metrics:
     ## limits:
     ##    cpu: 100m
     ##    memory: 256Mi
+    ##
     limits: {}
     ## Examples:
     ## requests:
     ##    cpu: 100m
     ##    memory: 256Mi
+    ##
     requests: {}
   ## Configure extra options for liveness probe
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -1149,12 +1194,13 @@ metrics:
     ##      severity: warning
     ##      service: mariadb
     ##    annotations:
-    ##      message: 'MariaDB instance {{ $labels.instance }} is down'
+    ##      message: 'MariaDB instance {{ `{{` }} $labels.instance {{ `}}` }} is down'
     ##      summary: MariaDB instance is down
     ##
     rules: []
 
 ## @section NetworkPolicy parameters
+##
 
 ## Add networkpolicies
 ##
@@ -1189,6 +1235,7 @@ networkPolicy:
   ##
   ingressRules:
     ## Allow access to the primary node only from the indicated:
+    ##
     primaryAccessOnlyFrom:
       enabled: false
       ## e.g:
@@ -1208,9 +1255,11 @@ networkPolicy:
       ##       - namespaceSelector:
       ##           matchLabels:
       ##             label: example
+      ##
       customRules: {}
 
     ## Allow access to the secondary node only from the indicated:
+    ##
     secondaryAccessOnlyFrom:
       enabled: false
       ## e.g:
@@ -1230,6 +1279,7 @@ networkPolicy:
       ##       - namespaceSelector:
       ##           matchLabels:
       ##             label: example
+      ##
       customRules: {}
 
   ## @param networkPolicy.egressRules.denyConnectionsToExternal Enable egress rule that denies outgoing traffic outside the cluster, except for DNS (port 53).
@@ -1245,4 +1295,5 @@ networkPolicy:
     ##       - namespaceSelector:
     ##           matchLabels:
     ##             label: example
+    ##
     customRules: {}

@@ -1,10 +1,9 @@
 {{- if and .Values.contour.enabled (include "contour.contour-certgen.enabled" .) }}
----
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "common.names.fullname" . }}-contour-certgen
-  namespace: {{ .Release.Namespace }}
+  name: {{ printf "%s-contour-certgen" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ include "common.names.namespace" . | quote }}
   annotations:
     "helm.sh/hook": "pre-install,pre-upgrade"
     "helm.sh/hook-weight": "1"
@@ -49,6 +48,7 @@ spec:
             - --overwrite
             - --secrets-format=compact
             - --namespace=$(CONTOUR_NAMESPACE)
+            - --certificate-lifetime={{ .Values.contour.certgen.certificateLifetime }}
           env:
             - name: CONTOUR_NAMESPACE
               valueFrom:

@@ -2,6 +2,7 @@
 ## Global Docker image parameters
 ## Please, note that this will override the image parameters, including dependencies, configured to use the global value
 ## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+##
 
 ## @param global.imageRegistry Global Docker image registry
 ## @param global.imagePullSecrets Global Docker registry secret names as an array
@@ -17,6 +18,7 @@ global:
   storageClass: ""
 
 ## @section Common parameters
+##
 
 ## @param kubeVersion Override Kubernetes version
 ##
@@ -56,12 +58,14 @@ diagnosticMode:
     - infinity
 
 ## @section SonarQube Image parameters
+##
 
 ## Bitnami SonarQube image
 ## ref: https://hub.docker.com/r/bitnami/sonarqube/tags/
 ## @param image.registry SonarQube image registry
 ## @param image.repository SonarQube image repository
 ## @param image.tag SonarQube image tag (immutable tags are recommended)
+## @param image.digest SonarQube image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy SonarQube image pull policy
 ## @param image.pullSecrets SonarQube image pull secrets
 ## @param image.debug Enable SonarQube image debug mode
@@ -69,7 +73,8 @@ diagnosticMode:
 image:
   registry: docker.io
   repository: bitnami/sonarqube
-  tag: 9.2.4-debian-10-r21
+  tag: 9.6.1-debian-11-r15
+  digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -89,7 +94,7 @@ image:
 
 ## @section SonarQube Configuration parameters
 ## SonarQube settings based on environment variables
-## ref: https://github.com/bitnami/bitnami-docker-sonarqube#environment-variables
+## ref: https://github.com/bitnami/containers/tree/main/bitnami/sonarqube#environment-variables
 ## @param sonarqubeUsername SonarQube username
 ##
 sonarqubeUsername: user
@@ -123,11 +128,65 @@ startTimeout: 150
 extraProperties: []
 ## @param sonarqubeSkipInstall Skip wizard installation
 ## NOTE: useful if you use an external database that already contains SonarQube data
-## ref: https://github.com/bitnami/bitnami-docker-sonarqube#connect-sonarqube-container-to-an-existing-database
+## ref: https://github.com/bitnami/containers/tree/main/bitnami/sonarqube#connect-sonarqube-container-to-an-existing-database
 ##
 sonarqubeSkipInstall: false
+## @param sonarSecurityRealm Set this to LDAP authenticate first against the external sytem. If the external system is not
+## reachable or if the user is not defined in the external system, authentication will be performed against SonarQube's internal database.
+##
+sonarSecurityRealm: ""
+## @param sonarAuthenticatorDowncase Set to true when connecting to a LDAP server using a case-insensitive setup.
+##
+sonarAuthenticatorDowncase: ""
+## Ldap configuration for Sonarqube
+##
+ldap:
+  ## @param ldap.url URL of the LDAP server. If you are using ldaps, you should install the server certificate into the Java truststore
+  ##
+  url: ""
+  ## @param ldap.bindDn The username of an LDAP user to connect (or bind) with. Leave this blank for anonymous access to the LDAP directory.
+  ##
+  bindDn: ""
+  ## @param ldap.bindPassword The password of the user to connect with. Leave this blank for anonymous access to the LDAP directory.
+  ##
+  bindPassword: ""
+  ## @param ldap.authentication Possible values: simple, CRAM-MD5, DIGEST-MD5, GSSAPI. See the tutorial on authentication mechanisms (http://java.sun.com/products/jndi/tutorial/ldap/security/auth.html)
+  ##
+  authentication: simple
+  ## @param ldap.realm See Digest-MD5 Authentication, CRAM-MD5 Authentication (http://java.sun.com/products/jndi/tutorial/ldap/security/digest.html)
+  ##
+  realm: ""
+  ## @param ldap.contextFactoryClass Context factory class.
+  ##
+  contextFactoryClass: com.sun.jndi.ldap.LdapCtxFactory
+  ## @param ldap.StartTLS Enable use of StartTLS
+  ##
+  StartTLS: false
+  ## @param ldap.followReferrals Follow referrals or not
+  ##
+  followReferrals: true
+  ## User Mapping
+  ## @param ldap.user.baseDn Distinguished Name (DN) of the root node in LDAP from which to search for users.
+  ## @param ldap.user.request LDAP user request.
+  ## @param ldap.user.realNameAttribute in LDAP defining the user’s real name.
+  ## @param ldap.user.emailAttribute Attribute in LDAP defining the user’s email.
+  ##
+  user:
+    baseDn: ""
+    request: (&(objectClass=inetOrgPerson)(uid={login}))
+    realNameAttribute: cn
+    emailAttribute: mail
+  ## Group Mapping
+  ## @param ldap.group.baseDn Distinguished Name (DN) of the root node in LDAP from which to search for groups.
+  ## @param ldap.group.request LDAP group request.
+  ## @param ldap.group.idAttribute Attribute in LDAP defining the group’s real name.
+  ##
+  group:
+    baseDn: ""
+    request: (&(objectClass=groupOfUniqueNames)(uniqueMember={dn}))
+    idAttribute: cn
 ## SMTP mail delivery configuration
-## ref: https://github.com/bitnami/bitnami-docker-sonarqube/#smtp-configuration
+## ref: https://github.com/bitnami/containers/tree/main/bitnami/sonarqube/#smtp-configuration
 ## @param smtpHost SMTP server host
 ## @param smtpPort SMTP server port
 ## @param smtpUser SMTP username
@@ -165,6 +224,7 @@ extraEnvVarsCM: ""
 extraEnvVarsSecret: ""
 
 ## @section SonarQube deployment parameters
+##
 
 ## @param replicaCount Number of SonarQube replicas to deploy
 ## NOTE: ReadWriteMany PVC(s) are required if replicaCount > 1
@@ -341,7 +401,7 @@ extraVolumeMounts: []
 ##       - name: portname
 ##         containerPort: 1234
 ##
-sidecars: {}
+sidecars: []
 ## @param initContainers Add additional init containers to the SonarQube pod(s)
 ## ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 ## e.g:
@@ -351,9 +411,10 @@ sidecars: {}
 ##    imagePullPolicy: Always
 ##    command: ['sh', '-c', 'echo "hello world"']
 ##
-initContainers: {}
+initContainers: []
 
 ## @section Traffic Exposure Parameters
+##
 
 ## SonarQube service parameters
 ##
@@ -401,6 +462,17 @@ service:
   ## @param service.extraPorts Extra ports to expose in SonarQube service (normally used with the `sidecars` value)
   ##
   extraPorts: []
+  ## @param service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+  ## If "ClientIP", consecutive client requests will be directed to the same Pod
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  ## sessionAffinityConfig:
+  ##   clientIP:
+  ##     timeoutSeconds: 300
+  ##
+  sessionAffinityConfig: {}
 ## SonarQube ingress parameters
 ## ref: https://kubernetes.io/docs/user-guide/ingress/
 ##
@@ -439,8 +511,8 @@ ingress:
   ## TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`
   ## You can:
   ##   - Use the `ingress.secrets` parameter to create this TLS secret
-  ##   - Relay on cert-manager to create it by setting the corresponding annotations
-  ##   - Relay on Helm to create self-signed certificates by setting `ingress.selfSigned=true`
+  ##   - Rely on cert-manager to create it by setting the corresponding annotations
+  ##   - Rely on Helm to create self-signed certificates by setting `ingress.selfSigned=true`
   ##
   tls: false
   ## @param ingress.selfSigned Create a TLS secret for this ingress record using self-signed certificates generated by Helm
@@ -491,8 +563,23 @@ ingress:
   ##       -----END CERTIFICATE-----
   ##
   secrets: []
+  ## @param ingress.extraRules Additional rules to be covered with this ingress record
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
+  ## e.g:
+  ## extraRules:
+  ## - host: sonarqube.local
+  ##     http:
+  ##       path: /
+  ##       backend:
+  ##         service:
+  ##           name: sonarqube-svc
+  ##           port:
+  ##             name: http
+  ##
+  extraRules: []
 
 ## @section Persistence Parameters
+##
 
 ## Persistence Parameters
 ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
@@ -520,6 +607,9 @@ persistence:
   ## @param persistence.existingClaim The name of an existing PVC to use for persistence
   ##
   existingClaim: ""
+  ## @param persistence.annotations Persistent Volume Claim annotations
+  ##
+  annotations: {}
 ## 'volumePermissions' init container parameters
 ## Changes the owner and group of the persistent volume mount point to runAsUser:fsGroup values
 ##   based on the *podSecurityContext/*containerSecurityContext parameters
@@ -533,13 +623,15 @@ volumePermissions:
   ## @param volumePermissions.image.registry Bitnami Shell image registry
   ## @param volumePermissions.image.repository Bitnami Shell image repository
   ## @param volumePermissions.image.tag Bitnami Shell image tag (immutable tags are recommended)
+  ## @param volumePermissions.image.digest Bitnami Shell image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
   ## @param volumePermissions.image.pullPolicy Bitnami Shell image pull policy
   ## @param volumePermissions.image.pullSecrets Bitnami Shell image pull secrets
   ##
   image:
     registry: docker.io
     repository: bitnami/bitnami-shell
-    tag: 10-debian-10-r307
+    tag: 11-debian-11-r41
+    digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
     ## Secrets must be manually created in the namespace.
@@ -568,6 +660,7 @@ volumePermissions:
     runAsUser: 0
 
 ## @section Sysctl Image parameters
+##
 
 ## Kernel settings modifier image
 ##
@@ -580,13 +673,15 @@ sysctl:
   ## @param sysctl.image.registry Bitnami Shell image registry
   ## @param sysctl.image.repository Bitnami Shell image repository
   ## @param sysctl.image.tag Bitnami Shell image tag (immutable tags are recommended)
+  ## @param sysctl.image.digest Bitnami Shell image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
   ## @param sysctl.image.pullPolicy Bitnami Shell image pull policy
   ## @param sysctl.image.pullSecrets Bitnami Shell image pull secrets
   ##
   image:
     registry: docker.io
     repository: bitnami/bitnami-shell
-    tag: 10-debian-10-r307
+    tag: 11-debian-11-r41
+    digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
     ## Secrets must be manually created in the namespace.
@@ -606,6 +701,7 @@ sysctl:
     requests: {}
 
 ## @section Other Parameters
+##
 
 ## RBAC configuration
 ##
@@ -614,18 +710,17 @@ rbac:
   ##
   create: false
 ## ServiceAccount configuration
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+## @param serviceAccount.create Specifies whether a ServiceAccount should be created
+## @param serviceAccount.name Name of the service account to use. If not set and create is true, a name is generated using the fullname template.
+## @param serviceAccount.automountServiceAccountToken Automount service account token for the server service account
+## @param serviceAccount.annotations Annotations for service account. Evaluated as a template. Only used if `create` is `true`.
 ##
 serviceAccount:
-  ## @param serviceAccount.create Specifies whether a ServiceAccount should be created
-  ##
   create: true
-  ## @param serviceAccount.name The name of the ServiceAccount to use.
-  ## If not set and create is true, a name is generated using the common.names.fullname template
-  ##
   name: ""
-  ## @param serviceAccount.automountServiceAccountToken Allows auto mount of ServiceAccountToken on the serviceAccount created
-  ##
-  automountServiceAccountToken: false
+  automountServiceAccountToken: true
+  annotations: {}
 ## SonarQube Autoscaling configuration
 ## ref: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
 ## @param autoscaling.enabled Enable Horizontal POD autoscaling for SonarQube
@@ -642,6 +737,7 @@ autoscaling:
   targetMemory: 50
 
 ## @section Metrics parameters
+##
 
 ## Prometheus Exporters / Metrics
 ##
@@ -657,13 +753,15 @@ metrics:
     ## @param metrics.jmx.image.registry JMX exporter image registry
     ## @param metrics.jmx.image.repository JMX exporter image repository
     ## @param metrics.jmx.image.tag JMX exporter image tag (immutable tags are recommended)
+    ## @param metrics.jmx.image.digest JMX exporter image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
     ## @param metrics.jmx.image.pullPolicy JMX exporter image pull policy
     ## @param metrics.jmx.image.pullSecrets Specify docker-registry secret names as an array
     ##
     image:
       registry: docker.io
       repository: bitnami/jmx-exporter
-      tag: 0.16.1-debian-10-r176
+      tag: 0.17.2-debian-11-r7
+      digest: ""
       pullPolicy: IfNotPresent
       ## Optionally specify an array of imagePullSecrets.
       ## Secrets must be manually created in the namespace.
@@ -776,6 +874,7 @@ metrics:
     selector: {}
 
 ## @section PostgreSQL subchart settings
+##
 
 ## PostgreSQL chart configuration
 ## https://github.com/bitnami/charts/blob/master/bitnami/postgresql/values.yaml
@@ -787,25 +886,27 @@ postgresql:
   ## @param postgresql.nameOverride Override name of the PostgreSQL chart
   ##
   nameOverride: ""
-  ## @param postgresql.existingSecret Existing secret containing the password of the PostgreSQL chart
-  ##
-  existingSecret: ""
-  ## @param postgresql.postgresqlPassword Password for the postgres user of the PostgreSQL chart (auto-generated if not set)
-  ## ref: https://hub.docker.com/_/postgres/
-  ##
-  postgresqlPassword: ""
-  ## @param postgresql.postgresqlUsername Username to create when deploying the PostgreSQL chart
-  ##
-  postgresqlUsername: bn_sonarqube
-  ## @param postgresql.postgresqlDatabase Database to create when deploying the PostgreSQL chart
-  ##
-  postgresqlDatabase: bitnami_sonarqube
+  auth:
+    ## @param postgresql.auth.existingSecret Existing secret containing the password of the PostgreSQL chart
+    ##
+    existingSecret: ""
+    ## @param postgresql.auth.password Password for the postgres user of the PostgreSQL chart (auto-generated if not set)
+    ## ref: https://hub.docker.com/_/postgres/
+    ##
+    password: ""
+    ## @param postgresql.auth.username Username to create when deploying the PostgreSQL chart
+    ##
+    username: bn_sonarqube
+    ## @param postgresql.auth.database Database to create when deploying the PostgreSQL chart
+    ##
+    database: bitnami_sonarqube
   ## PostgreSQL service
   ##
   service:
-    ## @param postgresql.service.port PostgreSQL service port
+    ## @param postgresql.service.ports.postgresql PostgreSQL service port
     ##
-    port: 5432
+    ports:
+      postgresql: 5432
   ## Enable persistence using Persistent Volume Claims
   ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
   ##
@@ -833,6 +934,7 @@ postgresql:
     size: 8Gi
 
 ## @section External Database settings
+##
 
 ## External Database Configuration
 ## All of these values are only used when postgresql.enabled is set to false
@@ -848,7 +950,7 @@ externalDatabase:
   ##
   password: ""
   ## @param externalDatabase.existingSecret Secret containing the password of an external PostgreSQL instance to connect (only if postgresql.enabled=false)
-  ## Name of an existing secret resource containing the DB password in a 'postgresql-password' key
+  ## Name of an existing secret resource containing the DB password in a 'password' key
   ##
   existingSecret: ""
   ## @param externalDatabase.database Database inside an external PostgreSQL to connect (only if postgresql.enabled=false)

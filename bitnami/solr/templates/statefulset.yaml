@@ -85,7 +85,7 @@ spec:
             - -ec
             - |
               mkdir -p /bitnami/solr
-              find /bitnami/solr -mindepth 1 -maxdepth 1 -not -name ".snapshot" -not -name "lost+found" | xargs chown -R {{ .Values.containerSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}
+              find /bitnami/solr -mindepth 1 -maxdepth 1 -not -name ".snapshot" -not -name "lost+found" | xargs -r chown -R {{ .Values.containerSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}
           {{- if .Values.volumePermissions.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.volumePermissions.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
@@ -196,7 +196,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "solr.secretName" . }}
-                  key: solr-password
+                  key: {{ include "solr.secretPasswordKey" . }}
             {{- end }}
             - name: SOLR_ZK_HOSTS
               value: {{ include "solr.zookeeper.host" . | quote }}
@@ -247,30 +247,89 @@ spec:
           resources: {{- toYaml .Values.resources | nindent 12 }}
           {{- end }}
           {{- if not .Values.diagnosticMode.enabled }}
-          {{- if .Values.livenessProbe.enabled }}
-          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
-            httpGet:
-              scheme: {{ ternary "HTTPS" "HTTP" .Values.tls.enabled }}
-              path: "/solr"
-              port: {{ .Values.containerPorts.http }}
-          {{- else if .Values.customLivenessProbe }}
+          {{- if .Values.customLivenessProbe }}
           livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            {{- if .Values.cloudEnabled }}
+            exec:
+              command:
+              - /bin/bash
+              - -ec
+              - |
+                curl --silent --connect-timeout 15000 {{ ternary "--user ${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}" "" .Values.auth.enabled }} http://localhost:${SOLR_PORT_NUMBER}/api/node/health | grep --quiet  '\"status\":\"OK\"'
+            {{- else }}
+            exec:
+              command:
+              - "/bin/bash"
+              - -ec
+              - |
+                {{- if .Values.auth.enabled }}
+                SOLR_AUTH_TYPE=basic SOLR_AUTHENTICATION_OPTS="-Dbasicauth=${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}" \
+                {{- end }}
+                solr assert --timeout {{ printf "%v000" .Values.livenessProbe.timeoutSeconds | quote }} {{ ternary "--cloud" "--not-cloud" .Values.cloudEnabled }} "{{ ternary "https" "http" .Values.tls.enabled }}://localhost:${SOLR_PORT_NUMBER}/solr/"
+             {{- end }}
           {{- end }}
-          {{- if .Values.readinessProbe.enabled }}
-          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
-            httpGet:
-              scheme: {{ ternary "HTTPS" "HTTP" .Values.tls.enabled }}
-              path: "/solr"
-              port: {{ .Values.containerPorts.http }}
-          {{- else if .Values.customReadinessProbe }}
+          {{- if .Values.customReadinessProbe }}
           readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            {{- if .Values.cloudEnabled }}
+            exec:
+              command:
+              - /bin/bash
+              - -ec
+              - |
+                curl --silent --connect-timeout 15000 {{ ternary "--user ${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}" "" .Values.auth.enabled }} http://localhost:${SOLR_PORT_NUMBER}/api/node/health | grep --quiet  '\"status\":\"OK\"'
+            {{- else }}
+            exec:
+              command:
+              - "/bin/bash"
+              - -ec
+              - |
+                {{- if .Values.auth.enabled }}
+                SOLR_AUTH_TYPE=basic SOLR_AUTHENTICATION_OPTS="-Dbasicauth=${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}" \
+                {{- end }}
+                solr assert --timeout {{ printf "%v000" .Values.readinessProbe.timeoutSeconds | quote }} {{ ternary "--cloud" "--not-cloud" .Values.cloudEnabled }} "{{ ternary "https" "http" .Values.tls.enabled }}://localhost:${SOLR_PORT_NUMBER}/solr/"
+            {{- end }}
           {{- end }}
-          {{- if .Values.startupProbe.enabled }}
-          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
-            tcpSocket:
-              port: {{ .Values.containerPorts.http }}
-          {{- else if .Values.customStartupProbe }}
+          {{- if .Values.customStartupProbe }}
           startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- else if .Values.startupProbe.enabled }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+            {{- if .Values.cloudEnabled }}
+            exec:
+              command:
+              - /bin/bash
+              - -ec
+              - |
+                curl --silent --connect-timeout 15000  {{ ternary "--user ${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}" "" .Values.auth.enabled }} http://localhost:${SOLR_PORT_NUMBER}/api/node/health | grep --quiet  '\"status\":\"OK\"'
+            {{- else }}
+            exec:
+              command:
+              - "/bin/bash"
+              - -ec
+              - |
+                {{- if .Values.auth.enabled }}
+                SOLR_AUTH_TYPE=basic SOLR_AUTHENTICATION_OPTS="-Dbasicauth=${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}" \
+                {{- end }}
+                solr assert --timeout {{ printf "%v000" .Values.readinessProbe.timeoutSeconds | quote }} {{ ternary "--cloud" "--not-cloud" .Values.cloudEnabled }} "{{ ternary "https" "http" .Values.tls.enabled }}://localhost:${SOLR_PORT_NUMBER}/solr/"
+            {{- end }}
           {{- end }}
           {{- end }}
           {{- if .Values.lifecycleHooks }}
@@ -295,7 +354,7 @@ spec:
       volumes:
         - name: scripts
           configMap:
-            name: {{ printf "%s-scripts" (include "common.names.fullname" .) }}
+            name: {{ printf "%s-scripts" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
             defaultMode: 0755
         {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
         - name: data

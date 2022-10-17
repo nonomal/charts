@@ -63,16 +63,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "keycloak.postgresql.fullname" -}}
-{{- if .Values.postgresql.fullnameOverride -}}
-{{- .Values.postgresql.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default "postgresql" .Values.postgresql.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
+{{- include "common.names.dependency.fullname" (dict "chartName" "postgresql" "chartValues" .Values.postgresql "context" $) -}}
 {{- end -}}
 
 {{/*
@@ -110,10 +101,10 @@ Return true if a configmap object should be created
 Return the Database hostname
 */}}
 {{- define "keycloak.databaseHost" -}}
-{{- if .Values.postgresql.enabled }}
-    {{- printf "%s" (include "keycloak.postgresql.fullname" .) -}}
+{{- if eq .Values.postgresql.architecture "replication" }}
+{{- ternary (include "keycloak.postgresql.fullname" .) .Values.externalDatabase.host .Values.postgresql.enabled -}}-primary
 {{- else -}}
-    {{- printf "%s" .Values.externalDatabase.host -}}
+{{- ternary (include "keycloak.postgresql.fullname" .) .Values.externalDatabase.host .Values.postgresql.enabled -}}
 {{- end -}}
 {{- end -}}
 
@@ -121,11 +112,7 @@ Return the Database hostname
 Return the Database port
 */}}
 {{- define "keycloak.databasePort" -}}
-{{- if .Values.postgresql.enabled }}
-    {{- printf "5432" | quote -}}
-{{- else -}}
-    {{- .Values.externalDatabase.port | quote -}}
-{{- end -}}
+{{- ternary "5432" .Values.externalDatabase.port .Values.postgresql.enabled | quote -}}
 {{- end -}}
 
 {{/*
@@ -133,9 +120,17 @@ Return the Database database name
 */}}
 {{- define "keycloak.databaseName" -}}
 {{- if .Values.postgresql.enabled }}
-    {{- printf "%s" .Values.postgresql.postgresqlDatabase -}}
+    {{- if .Values.global.postgresql }}
+        {{- if .Values.global.postgresql.auth }}
+            {{- coalesce .Values.global.postgresql.auth.database .Values.postgresql.auth.database -}}
+        {{- else -}}
+            {{- .Values.postgresql.auth.database -}}
+        {{- end -}}
+    {{- else -}}
+        {{- .Values.postgresql.auth.database -}}
+    {{- end -}}
 {{- else -}}
-    {{- printf "%s" .Values.externalDatabase.database -}}
+    {{- .Values.externalDatabase.database -}}
 {{- end -}}
 {{- end -}}
 
@@ -144,9 +139,17 @@ Return the Database user
 */}}
 {{- define "keycloak.databaseUser" -}}
 {{- if .Values.postgresql.enabled }}
-    {{- printf "%s" .Values.postgresql.postgresqlUsername -}}
+    {{- if .Values.global.postgresql }}
+        {{- if .Values.global.postgresql.auth }}
+            {{- coalesce .Values.global.postgresql.auth.username .Values.postgresql.auth.username -}}
+        {{- else -}}
+            {{- .Values.postgresql.auth.username -}}
+        {{- end -}}
+    {{- else -}}
+        {{- .Values.postgresql.auth.username -}}
+    {{- end -}}
 {{- else -}}
-    {{- printf "%s" .Values.externalDatabase.user -}}
+    {{- .Values.externalDatabase.user -}}
 {{- end -}}
 {{- end -}}
 
@@ -155,17 +158,40 @@ Return the Database encrypted password
 */}}
 {{- define "keycloak.databaseSecretName" -}}
 {{- if .Values.postgresql.enabled }}
-    {{- if .Values.postgresql.existingSecret -}}
-        {{- printf "%s" .Values.postgresql.existingSecret -}}
-    {{- else }}
-        {{- printf "%s" (include "keycloak.postgresql.fullname" .) -}}
+    {{- if .Values.global.postgresql }}
+        {{- if .Values.global.postgresql.auth }}
+            {{- if .Values.global.postgresql.auth.existingSecret }}
+                {{- tpl .Values.global.postgresql.auth.existingSecret $ -}}
+            {{- else -}}
+                {{- default (include "keycloak.postgresql.fullname" .) (tpl .Values.postgresql.auth.existingSecret $) -}}
+            {{- end -}}
+        {{- else -}}
+            {{- default (include "keycloak.postgresql.fullname" .) (tpl .Values.postgresql.auth.existingSecret $) -}}
+        {{- end -}}
+    {{- else -}}
+        {{- default (include "keycloak.postgresql.fullname" .) (tpl .Values.postgresql.auth.existingSecret $) -}}
     {{- end -}}
 {{- else -}}
+    {{- default (include "common.secrets.name" (dict "existingSecret" .Values.auth.existingSecret "context" $)) (tpl .Values.externalDatabase.existingSecret $) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Add environment variables to configure database values
+*/}}
+{{- define "keycloak.databaseSecretKey" -}}
+{{- if .Values.postgresql.enabled -}}
+    {{- print "password" -}}
+{{- else -}}
     {{- if .Values.externalDatabase.existingSecret -}}
-        {{- printf "%s" (include "common.secrets.name" (dict "existingSecret" .Values.externalDatabase.existingSecret "context" $)) -}}
+        {{- if .Values.externalDatabase.existingSecretPasswordKey -}}
+            {{- printf "%s" .Values.externalDatabase.existingSecretPasswordKey -}}
+        {{- else -}}
+            {{- print "password" -}}
+        {{- end -}}
     {{- else -}}
-        {{- printf "%s" (include "common.secrets.name" (dict "existingSecret" .Values.auth.existingSecret "context" $)) -}}
-    {{- end }}
+        {{- print "password" -}}
+    {{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -202,21 +228,10 @@ Return true if a TLS secret object should be created
 {{- end -}}
 
 {{/*
-Return true if cert-manager required annotations for TLS signed certificates are set in the Ingress annotations
-Ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
-*/}}
-{{- define "keycloak.ingress.certManagerRequest" -}}
-{{ if or (hasKey . "cert-manager.io/cluster-issuer") (hasKey . "cert-manager.io/issuer") }}
-    {{- true -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Compile all warnings into a single message.
 */}}
 {{- define "keycloak.validateValues" -}}
 {{- $messages := list -}}
-{{- $messages := append $messages (include "keycloak.validateValues.replicaCount" .) -}}
 {{- $messages := append $messages (include "keycloak.validateValues.database" .) -}}
 {{- $messages := append $messages (include "keycloak.validateValues.auth.tls" .) -}}
 {{- $messages := without $messages "" -}}
@@ -224,18 +239,6 @@ Compile all warnings into a single message.
 
 {{- if $message -}}
 {{-   printf "\nVALUES VALIDATION:\n%s" $message | fail -}}
-{{- end -}}
-{{- end -}}
-
-{{/* Validate values of Keycloak - number of replicas */}}
-{{- define "keycloak.validateValues.replicaCount" -}}
-{{- $replicaCount := int .Values.replicaCount }}
-{{- if and (not .Values.serviceDiscovery.enabled) (gt $replicaCount 1) -}}
-keycloak: replicaCount
-    You need to configure the ServiceDiscovery settings to run more than 1 replica.
-    Enable the Service Discovery (--set serviceDiscovery.enabled=true) and
-    set the Service Discovery protocol (--set serviceDiscovery.protocol="FOO") and
-    the Service Discovery properties (--set serviceDiscovery.properties[0]="BAR") if needed.
 {{- end -}}
 {{- end -}}
 

@@ -67,7 +67,7 @@ To access your SonarQube site from outside the cluster follow the steps below:
 3. Login with the following credentials below:
 
   echo Username: {{ .Values.sonarqubeUsername }}
-  echo Password: $(kubectl get secret --namespace {{ .Release.Namespace }} {{ template "common.names.fullname" . }} -o jsonpath="{.data.sonarqube-password}" | base64 --decode)
+  echo Password: $(kubectl get secret --namespace {{ .Release.Namespace }} {{ template "common.names.fullname" . }} -o jsonpath="{.data.sonarqube-password}" | base64 -d)
 
 {{- if .Values.metrics.jmx.enabled }}
 
@@ -93,9 +93,5 @@ You can access the JMX Prometheus metrics following the steps below:
     {{- $requiredSonarQubePassword := dict "valueKey" "sonarqubePassword" "secret" $secretName "field" "sonarqube-password" "context" $ -}}
     {{- $requiredSonarQubePasswordError := include "common.validations.values.single.empty" $requiredSonarQubePassword -}}
     {{- $passwordValidationErrors = append $passwordValidationErrors $requiredSonarQubePasswordError -}}
-{{- end }}
-{{- if .Values.postgresql.enabled }}
-    {{- $dbSecretName := include "sonarqube.database.secretName" . -}}
-    {{- $dbPasswordValidationErrors := include "common.validations.values.postgresql.passwords" (dict "secret" $dbSecretName "subchart" true "context" $) -}}
 {{- end }}
 {{- include "common.errors.upgrade.passwords.empty" (dict "validationErrors" $passwordValidationErrors "context" $) -}}

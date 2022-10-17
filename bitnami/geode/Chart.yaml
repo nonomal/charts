@@ -1,13 +1,13 @@
 annotations:
   category: Database
 apiVersion: v2
-appVersion: 1.14.2
+appVersion: 1.15.0
 dependencies:
   - name: common
     repository: https://charts.bitnami.com/bitnami
     tags:
       - bitnami-common
-    version: 1.x.x
+    version: 2.x.x
 description: Apache Geode is a data management platform that provides advanced capabilities for data-intensive applications.
 home: https://github.com/bitnami/charts/tree/master/bitnami/geode
 icon: https://bitnami.com/assets/stacks/geode/img/geode-stack-220x234.png
@@ -16,10 +16,10 @@ keywords:
   - geode
   - database
 maintainers:
-  - email: containers@bitnami.com
-    name: Bitnami
+  - name: Bitnami
+    url: https://github.com/bitnami/charts
 name: geode
 sources:
-  - https://github.com/bitnami/bitnami-docker-geode
+  - https://github.com/bitnami/containers/tree/main/bitnami/geode
   - https://github.com/apache/geode
-version: 0.4.3
+version: 1.1.4

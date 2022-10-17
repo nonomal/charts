@@ -21,6 +21,9 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
+  {{- if and .Values.mgmtIngress.ingressClassName (eq "true" (include "common.ingress.supportsIngressClassname" .)) }}
+  ingressClassName: {{ .Values.mgmtIngress.ingressClassName | quote }}
+  {{- end }}
   rules:
     {{- if .Values.mgmtIngress.hostname }}
     - host: {{ .Values.mgmtIngress.hostname | quote }}
@@ -44,6 +47,9 @@ spec:
             pathType: {{ default "ImplementationSpecific" .pathType }}
             {{- end }}
             backend: {{- include "common.ingress.backend" (dict "serviceName" (include "common.names.fullname" $) "servicePort" "mgmt" "context" $) | nindent 14 }}
+    {{- end }}
+    {{- if .Values.mgmtIngress.extraRules }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.mgmtIngress.extraRules "context" $) | nindent 4 }}
     {{- end }}
   {{- if or .Values.mgmtIngress.tls .Values.mgmtIngress.extraTls }}
   tls:

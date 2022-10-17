@@ -34,7 +34,7 @@ Usage:
 {{ include "consul.retryjoin.endpoint" . }}
 */}}
 {{- define "consul.retryjoin.endpoint" -}}
-    {{- $name := printf "%s-headless" (include "common.names.fullname" .) -}}
+    {{- $name := printf "%s-headless" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" -}}
     {{- $domain := .Values.clusterDomain -}}
     {{- $namespace := .Release.Namespace -}}
     {{- printf "%s.%s.svc.%s" $name $namespace $domain -}}
@@ -47,7 +47,7 @@ Return the configmap with the Consul configuration
 {{- if .Values.existingConfigmap -}}
     {{- printf "%s" (tpl .Values.existingConfigmap $) -}}
 {{- else -}}
-    {{- printf "%s" (printf "%s-configuration" (include "common.names.fullname" .)) -}}
+    {{- printf "%s" (printf "%s-configuration" (include "common.names.fullname" .)) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 
@@ -58,15 +58,5 @@ Return true if a configmap object should be created for Consul
 {{- if and .Values.configuration (not .Values.existingConfigmap) }}
     {{- true -}}
 {{- else -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return true if cert-manager required annotations for TLS signed certificates are set in the Ingress annotations
-Ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
-*/}}
-{{- define "consul.ingress.certManagerRequest" -}}
-{{ if or (hasKey . "cert-manager.io/cluster-issuer") (hasKey . "cert-manager.io/issuer") }}
-    {{- true -}}
 {{- end -}}
 {{- end -}}

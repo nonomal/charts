@@ -9,6 +9,7 @@ metadata:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
     {{- end }}
   name: {{ template "common.names.fullname" . }}-agent
+  namespace: {{ .Release.Namespace | quote }}
   {{- if .Values.commonAnnotations }}
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
@@ -17,7 +18,7 @@ spec:
   {{- if .Values.agent.iptables }}
   allowedCapabilities:
     - "NET_ADMIN"
-  {{ end }}
+  {{- end }}
   allowPrivilegeEscalation: false
   volumes:
     - 'secret'

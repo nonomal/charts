@@ -27,6 +27,9 @@ nameOverride: ""
 ## @param fullnameOverride String to fully override ebjca.fullname template
 ##
 fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
 ## @param commonLabels Add labels to all the deployed resources
 ##
 commonLabels: {}
@@ -59,6 +62,7 @@ diagnosticMode:
 ## @param image.registry EJBCA image registry
 ## @param image.repository EJBCA image name
 ## @param image.tag EJBCA image tag
+## @param image.digest EJBCA image image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy EJBCA image pull policy
 ## @param image.pullSecrets Specify docker-registry secret names as an array
 ## @param image.debug Enable image debug mode
@@ -66,7 +70,8 @@ diagnosticMode:
 image:
   registry: docker.io
   repository: bitnami/ejbca
-  tag: 7.4.3-2-debian-10-r92
+  tag: 7.9.0-2-debian-11-r24
+  digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -239,7 +244,7 @@ schedulerName: ""
 ##
 topologySpreadConstraints: []
 ## @param ejbcaAdminUsername EJBCA administrator username
-## ref: https://github.com/bitnami/bitnami-docker-ejbca#environment-variables
+## ref: https://github.com/bitnami/containers/tree/main/bitnami/ejbca#environment-variables
 ##
 ejbcaAdminUsername: bitnami
 ## @param ejbcaAdminPassword Password for the administrator account
@@ -525,6 +530,20 @@ ingress:
   ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
   ##
   ingressClassName: ""
+  ## @param ingress.extraRules Additional rules to be covered with this ingress record
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
+  ## e.g:
+  ## extraRules:
+  ## - host: example.local
+  ##     http:
+  ##       path: /
+  ##       backend:
+  ##         service:
+  ##           name: example-svc
+  ##           port:
+  ##             name: http
+  ##
+  extraRules: []
 
 ## @section Database parameters
 
@@ -546,13 +565,13 @@ mariadb:
   ## @param mariadb.auth.password Password for the database
   ##
   auth:
-    ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-the-root-password-on-first-run
+    ## ref: https://github.com/bitnami/containers/tree/main/bitnami/mariadb#setting-the-root-password-on-first-run
     ##
     rootPassword: ""
-    ## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-on-first-run
+    ## ref: https://github.com/bitnami/containers/blob/main/bitnami/mariadb/README.md#creating-a-database-on-first-run
     ##
     database: bitnami_ejbca
-    ## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-user-on-first-run
+    ## ref: https://github.com/bitnami/containers/blob/main/bitnami/mariadb/README.md#creating-a-database-user-on-first-run
     ##
     username: bn_ejbca
     password: ""

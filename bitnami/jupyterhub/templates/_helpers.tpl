@@ -1,3 +1,21 @@
+{{- /*
+    Returns given number of random Hex characters.
+
+    - randNumeric 4 | atoi generates a random number in [0, 10^4)
+      This is a range range evenly divisble by 16, but even if off by one,
+      that last partial interval offsetting randomness is only 1 part in 625.
+    - mod N 16 maps to the range 0-15
+    - printf "%x" represents a single number 0-15 as a single hex character
+*/}}
+{{- define "jupyterhub.randHex" -}}
+    {{- $result := "" }}
+    {{- range $i := until . }}
+        {{- $rand_hex_char := mod (randNumeric 4 | atoi) 16 | printf "%x" }}
+        {{- $result = print $result $rand_hex_char }}
+    {{- end }}
+    {{- $result }}
+{{- end }}
+
 {{/*
 Return the proper hub image name
 */}}
@@ -11,6 +29,42 @@ Return the proper hub image name
 {{- define "jupyterhub.hub.name" -}}
 {{- printf "%s-hub" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{/*
+Return the cookie_secret value
+*/}}
+{{- define "jupyterhub.hub.config.JupyterHub.cookie_secret" -}}
+    {{ $hubConfiguration := include "common.tplvalues.render" ( dict "value" .Values.hub.configuration "context" $ ) | fromYaml }}
+    {{- if ($hubConfiguration | dig "hub" "config" "JupyterHub" "cookie_secret" "") }}
+        {{- $hubConfiguration.hub.config.JupyterHub.cookie_secret }}
+    {{- else if ($hubConfiguration | dig "hub" "cookieSecret" "") }}
+        {{- $hubConfiguration.hub.cookieSecret }}
+    {{- else }}
+        {{- $secretData := (lookup "v1" "Secret" $.Release.Namespace ( include "jupyterhub.hub.name" . )).data }}
+        {{- if hasKey $secretData "hub.config.JupyterHub.cookie_secret" }}
+            {{- index $secretData "hub.config.JupyterHub.cookie_secret" | b64dec }}
+        {{- else }}
+            {{- include "jupyterhub.randHex" 64 }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+
+{{/*
+Return the CryptKeeper value
+*/}}
+{{- define "jupyterhub.hub.config.CryptKeeper.keys" -}}
+    {{ $hubConfiguration := include "common.tplvalues.render" ( dict "value" .Values.hub.configuration "context" $ ) | fromYaml }}
+    {{- if ($hubConfiguration | dig "hub" "config" "CryptKeeper" "keys" "") }}
+        {{- $hubConfiguration.hub.config.CryptKeeper.keys | join ";" }}
+    {{- else }}
+        {{- $secretData := (lookup "v1" "Secret" $.Release.Namespace ( include "jupyterhub.hub.name" . )).data }}
+        {{- if hasKey $secretData "hub.config.CryptKeeper.keys" }}
+            {{- index $secretData "hub.config.CryptKeeper.keys" | b64dec }}
+        {{- else }}
+            {{- include "jupyterhub.randHex" 64 }}
+        {{- end }}
+    {{- end }}
+{{- end }}
 
 {{/*
 Return the proper hub image name
@@ -142,23 +196,47 @@ Create a default fully qualified postgresql name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "jupyterhub.postgresql.fullname" -}}
-{{- $name := default "postgresql" .Values.postgresql.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- include "common.names.dependency.fullname" (dict "chartName" "postgresql" "chartValues" .Values.postgresql "context" $) -}}
 {{- end -}}
 
 {{/*
 Get the Postgresql credentials secret.
 */}}
 {{- define "jupyterhub.databaseSecretName" -}}
-{{- if and (.Values.postgresql.enabled) (not .Values.postgresql.existingSecret) -}}
-    {{- printf "%s" (include "jupyterhub.postgresql.fullname" .) -}}
-{{- else if and (.Values.postgresql.enabled) (.Values.postgresql.existingSecret) -}}
-    {{- printf "%s" .Values.postgresql.existingSecret -}}
-{{- else }}
-    {{- if .Values.externalDatabase.existingSecret -}}
-        {{- printf "%s" .Values.externalDatabase.existingSecret -}}
+{{- if .Values.postgresql.enabled }}
+    {{- if .Values.global.postgresql }}
+        {{- if .Values.global.postgresql.auth }}
+            {{- if .Values.global.postgresql.auth.existingSecret }}
+                {{- tpl .Values.global.postgresql.auth.existingSecret $ -}}
+            {{- else -}}
+                {{- default (include "jupyterhub.postgresql.fullname" .) (tpl .Values.postgresql.auth.existingSecret $) -}}
+            {{- end -}}
+        {{- else -}}
+            {{- default (include "jupyterhub.postgresql.fullname" .) (tpl .Values.postgresql.auth.existingSecret $) -}}
+        {{- end -}}
     {{- else -}}
-        {{ printf "%s-%s" .Release.Name "externaldb" }}
+        {{- default (include "jupyterhub.postgresql.fullname" .) (tpl .Values.postgresql.auth.existingSecret $) -}}
+    {{- end -}}
+{{- else -}}
+    {{- default (printf "%s-externaldb" .Release.Name) (tpl .Values.externalDatabase.existingSecret $) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Add environment variables to configure database values
+*/}}
+{{- define "jupyterhub.databaseSecretKey" -}}
+{{- if .Values.postgresql.enabled -}}
+    {{- print "password" -}}
+{{- else -}}
+    {{- if .Values.externalDatabase.existingSecret -}}
+        {{- if .Values.externalDatabase.existingSecretPasswordKey -}}
+            {{- printf "%s" .Values.externalDatabase.existingSecretPasswordKey -}}
+        {{- else -}}
+            {{- print "db-password" -}}
+        {{- end -}}
+    {{- else -}}
+        {{- print "db-password" -}}
     {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -212,15 +290,5 @@ Compile all warnings into a single message.
 
 {{- if $message -}}
 {{-   printf "\nVALUES VALIDATION:\n%s" $message -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return true if cert-manager required annotations for TLS signed certificates are set in the Ingress annotations
-Ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
-*/}}
-{{- define "jupyterhub.ingress.certManagerRequest" -}}
-{{ if or (hasKey . "cert-manager.io/cluster-issuer") (hasKey . "cert-manager.io/issuer") }}
-    {{- true -}}
 {{- end -}}
 {{- end -}}

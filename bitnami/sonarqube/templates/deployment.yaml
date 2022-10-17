@@ -77,6 +77,7 @@ spec:
               {{- include "sonarqube.sysctl.ifLess" (dict "key" "fs.file-max" "value" "65536") | nindent 14 }}
           securityContext:
             privileged: true
+            runAsUser: 0
           {{- if .Values.sysctl.resources }}
           resources: {{- toYaml .Values.sysctl.resources | nindent 12 }}
           {{- end }}
@@ -92,7 +93,7 @@ spec:
             - |
               mkdir -p /bitnami/sonarqube
               chmod 700 /bitnami/sonarqube
-              find /bitnami/sonarqube -mindepth 1 -maxdepth 1 -not -name ".snapshot" -not -name "lost+found" | xargs chown -R {{ .Values.containerSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}
+              find /bitnami/sonarqube -mindepth 1 -maxdepth 1 -not -name ".snapshot" -not -name "lost+found" | xargs -r chown -R {{ .Values.containerSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}
           {{- if .Values.volumePermissions.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.volumePermissions.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
@@ -146,6 +147,74 @@ spec:
             - name: SONARQUBE_MAX_HEAP_SIZE
               value: {{ .Values.maxHeapSize | quote }}
             {{- end }}
+            {{- if .Values.sonarSecurityRealm }}
+            - name: SONAR_SECURITY_REALM
+              value: {{ .Values.sonarSecurityRealm | quote }}
+            {{- end }}
+            {{- if .Values.sonarAuthenticatorDowncase }}
+            - name: SONAR_AUTHENTICATOR_DOWNCASE
+              value: {{ .Values.sonarAuthenticatorDowncase | quote }}
+            {{- end }}
+            {{- if .Values.ldap.url }}
+            - name: LDAP_URL
+              value: {{ .Values.ldap.url | quote }}
+            {{- end }}
+            {{- if .Values.ldap.bindDn }}
+            - name: LDAP_BINDDN
+              value: {{ .Values.ldap.bindDn | quote }}
+            {{- end }}
+            {{- if .Values.ldap.bindPassword }}
+            - name: LDAP_BINDPASSWORD
+              value: {{ .Values.ldap.bindPassword | quote }}
+            {{- end }}
+            {{- if .Values.ldap.authentication }}
+            - name: LDAP_AUTHENTICATION
+              value: {{ .Values.ldap.authentication | quote }}
+            {{- end }}
+            {{- if .Values.ldap.realm }}
+            - name: LDAP_REALM
+              value: {{ .Values.ldap.realm | quote }}
+            {{- end }}
+            {{- if .Values.ldap.contextFactoryClass }}
+            - name: LDAP_CONTEXTFACTORYCLASS
+              value: {{ .Values.ldap.contextFactoryClass | quote }}
+            {{- end }}
+            {{- if .Values.ldap.StartTLS }}
+            - name: LDAP_STARTTLS
+              value: {{ .Values.ldap.StartTLS | quote }}
+            {{- end }}
+            {{- if .Values.ldap.followReferrals }}
+            - name: LDAP_FOLLOWREFERRALS
+              value: {{ .Values.ldap.followReferrals | quote }}
+            {{- end }}
+            {{- if .Values.ldap.user.baseDn }}
+            - name: LDAP_USER_BASEDN
+              value: {{ .Values.ldap.user.baseDn | quote }}
+            {{- end }}
+            {{- if .Values.ldap.user.request }}
+            - name: LDAP_USER_REQUEST
+              value: {{ .Values.ldap.user.request | quote }}
+            {{- end }}
+            {{- if .Values.ldap.user.realNameAttribute }}
+            - name: LDAP_USER_REALNAMEATTRIBUTE
+              value: {{ .Values.ldap.user.realNameAttribute | quote }}
+            {{- end }}
+            {{- if .Values.ldap.user.emailAttribute }}
+            - name: LDAP_USER_EMAILATTRIBUTE
+              value: {{ .Values.ldap.user.emailAttribute | quote }}
+            {{- end }}
+            {{- if .Values.ldap.group.baseDn }}
+            - name: LDAP_GROUP_BASEDN
+              value: {{ .Values.ldap.group.baseDn | quote }}
+            {{- end }}
+            {{- if .Values.ldap.group.request }}
+            - name: LDAP_GROUP_REQUEST
+              value: {{ .Values.ldap.group.request | quote }}
+            {{- end }}
+            {{- if .Values.ldap.group.idAttribute }}
+            - name: LDAP_GROUP_IDATTRIBUTE
+              value: {{ .Values.ldap.group.idAttribute | quote }}
+            {{- end }}
             - name: SONARQUBE_START_TIMEOUT
               value: {{ .Values.startTimeout | quote }}
             - name: SONARQUBE_DATABASE_HOST
@@ -160,7 +229,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sonarqube.database.secretName" . }}
-                  key: postgresql-password
+                  key: password
             {{- if .Values.smtpHost }}
             - name: SONARQUBE_SMTP_HOST
               value: {{ .Values.smtpHost | quote }}
@@ -217,28 +286,28 @@ spec:
             - name: elastic
               containerPort: {{ .Values.containerPorts.elastic }}
           {{- if not .Values.diagnosticMode.enabled }}
-          {{- if .Values.livenessProbe.enabled }}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
           livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
             httpGet:
               path: /
               port: http
-          {{- else if .Values.customLivenessProbe }}
-          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
           {{- end }}
-          {{- if .Values.readinessProbe.enabled }}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
           readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
             httpGet:
               path: /
               port: http
-          {{- else if .Values.customReadinessProbe }}
-          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
           {{- end }}
-          {{- if .Values.startupProbe.enabled }}
+          {{- if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- else if .Values.startupProbe.enabled }}
           startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
             tcpSocket:
               port: http
-          {{- else if .Values.customStartupProbe }}
-          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
           {{- end }}
           {{- end }}
           {{- if .Values.lifecycleHooks }}

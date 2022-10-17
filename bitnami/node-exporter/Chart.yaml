@@ -1,13 +1,13 @@
 annotations:
   category: Analytics
 apiVersion: v2
-appVersion: 1.3.1
+appVersion: 1.4.0
 dependencies:
   - name: common
     repository: https://charts.bitnami.com/bitnami
     tags:
       - bitnami-common
-    version: 1.x.x
+    version: 2.x.x
 description: Prometheus exporter for hardware and OS metrics exposed by UNIX kernels, with pluggable metric collectors.
 engine: gotpl
 home: https://github.com/bitnami/charts/tree/master/bitnami/node-exporter
@@ -17,11 +17,11 @@ keywords:
   - node-exporter
   - monitoring
 maintainers:
-  - email: containers@bitnami.com
-    name: Bitnami
+  - name: Bitnami
+    url: https://github.com/bitnami/charts
 name: node-exporter
 sources:
-  - https://github.com/bitnami/bitnami-docker-node-exporter
+  - https://github.com/bitnami/containers/tree/main/bitnami/node-exporter
   - https://github.com/prometheus/node_exporter
   - https://prometheus.io/
-version: 2.4.1
+version: 3.2.1
